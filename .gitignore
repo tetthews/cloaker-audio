@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+testes/
+*_protegido/
+protegidos/
+*.mp4
+*.mov
+*.m4a
+*.wav
+*.npy
+dist/

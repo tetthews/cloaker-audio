@@ -1,0 +1,40 @@
+CLOAKER DE ÁUDIO · LEIA-ME PRIMEIRO
+==================================
+
+Protege a fala dos seus vídeos: as pessoas ouvem normal, mas as IAs de
+transcrição (que os concorrentes usam pra copiar Reels) escrevem outra coisa.
+
+COMO INSTALAR (faça na ordem)
+-----------------------------
+0. Deixe esta pasta num lugar fixo (ex.: Documentos). Não mova depois.
+
+1. VERIFICAR O COMPUTADOR
+   Windows: dois cliques em  "1 - Verificar o computador (Windows).bat"
+   Mac:     botão direito em "1 - Verificar o computador (Mac).command" > Abrir
+   Ele diz se o computador aguenta. Não instala nada.
+
+2. INSTALAR
+   Windows: dois cliques em  "2 - Instalar no Windows.bat"
+   Mac:     botão direito em "2 - Instalar no Mac.command" > Abrir
+   São 6 passos, de 15 a 40 minutos. Não feche a janela até aparecer INSTALADO.
+
+   Mac bloqueou? Botão direito > Abrir. Se insistir: Ajustes do Sistema >
+   Privacidade e Segurança > "Abrir Mesmo Assim".
+   Windows avisou "protegeu o computador"? Mais informações > Executar assim mesmo.
+
+COMO USAR
+---------
+1. Arraste o vídeo em cima do atalho "Proteger Video" (Área de Trabalho/Mesa).
+2. Espere terminar (~20 min por minuto de vídeo com placa NVIDIA;
+   ~40-60 min no Mac M1/M2/M3/M4).
+3. Ao lado do vídeo aparece a pasta NOME_protegido:
+   - NOME_protegido.mp4 (ou .mov) -> É ESSE QUE VOCÊ POSTA
+   - relatorio.html -> mostra o que a IA consegue ler antes e depois
+
+IMPORTANTE
+----------
+- Não coloque legenda escrita da fala no vídeo protegido (a IA lê a tela).
+- Se for fazer variações do vídeo (cor, corte, velocidade), faça ANTES de proteger.
+- Não é 100%: dificulta a cópia em massa por IA; quem ouvir e digitar ainda copia.
+
+Detalhes, modos e opções: README.md

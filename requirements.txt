@@ -1,0 +1,12 @@
+# O PyTorch é instalado à parte pelo instalar.bat / instalar.sh
+# (CUDA no Windows com NVIDIA, MPS no Mac Apple Silicon).
+openai-whisper>=20240930
+faster-whisper>=1.1.0
+transformers>=4.40
+numpy>=1.26
+soundfile>=0.12
+scipy>=1.11
+jiwer>=3.0
+imageio-ffmpeg>=0.5
+tqdm>=4.66
+psutil>=5.9
