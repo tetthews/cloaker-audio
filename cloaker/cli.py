@@ -38,6 +38,13 @@ def _cfg_de_args(a):
 
     if getattr(a, "perfil", None) is None:
         a.perfil = _perfil_auto()
+        if a.perfil == "rapido" and getattr(a, "roteiro", None):
+            try:
+                tr = json.loads(Path(a.roteiro).read_text(encoding="utf-8"))["trechos"]
+                if any(t.get("proteger") is False for t in tr):
+                    a.perfil = "expresso"  # só alguns trechos: dá pra ir mais rápido
+            except Exception:
+                pass
 
     return Config.montar(
         a.forca,
@@ -161,6 +168,17 @@ def _avaliar(original: Path, protegido: Path, pasta: Path, cfg, referencia: str 
     )
     resumo = rel.resumo()
     _log(f"  ✓ avaliação em {rel.segundos} s · {resumo}")
+    trechos_av = None
+    if getattr(cfg, "roteiro", ""):
+        _log("  medindo trecho a trecho (large-v3, após upload 128k)...")
+        try:
+            a128 = midia.carregar_audio(r128, sr=16000, canais=1)[0][0]
+            trechos_av = avaliacao.por_trecho(a128, r, "large-v3", dev)
+            for t in trechos_av:
+                if t["protegido"]:
+                    _log(f"    {t['ini']:5.1f}s vazou {t['vazamento']:4.0%} · {t['original'][:60]}")
+        except Exception as e:
+            _log(f"  [aviso] medição por trecho falhou: {e}")
     audios = [
         ("Original", orig_m4a.name),
         ("Protegido (arquivo final)", protegido.name),
@@ -174,6 +192,7 @@ def _avaliar(original: Path, protegido: Path, pasta: Path, cfg, referencia: str 
         "linhas": rel.linhas,
         "resumo": resumo,
         "segundos": rel.segundos,
+        "trechos": trechos_av,
     }, audios
 
 
@@ -321,8 +340,8 @@ def cmd_roteiro(a) -> int:
         "trechos": trechos,
     }
     saida.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
-    for t in trechos:
-        _log(f"[{t['ini']:6.2f}–{t['fim']:6.2f}] FALA:  {t['original']}")
+    for i, t in enumerate(trechos, 1):
+        _log(f"{i:2d}. [{t['ini']:6.2f}–{t['fim']:6.2f}] FALA:  {t['original']}")
         if t["falso"]:
             _log(f"                 FALSO: {t['falso']}")
     if aviso:

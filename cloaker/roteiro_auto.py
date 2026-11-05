@@ -134,6 +134,45 @@ def distribuir_copy(trechos: list[dict], copy: str) -> tuple[list[dict], str | N
     return trechos, aviso
 
 
+def _radicais(texto: str) -> set[str]:
+    from .avaliacao import palavras_conteudo
+
+    return {w[:5] if len(w) > 5 else w for w in palavras_conteudo(texto)}
+
+
+def priorizar(trechos: list[dict], limiar: float = 0.6) -> tuple[list[dict], dict]:
+    """Foco: compara a fala de cada trecho com o texto falso dele.
+
+    - trecho onde os dois já dizem quase a mesma coisa (>= `limiar` das palavras da fala
+      aparecem no falso, por radical): não precisa de ruído. O alvo vira a própria fala, e o
+      ruído ali é zerado (menos trabalho e menos ruído).
+    - nos demais, o peso cresce com a diferença e com números na fala (valores, preços,
+      faixas salariais costumam ser o que mais interessa esconder).
+    """
+    import re
+
+    n_pulados = 0
+    for t in trechos:
+        ro, rf = _radicais(t["original"]), _radicais(t["falso"])
+        sim = len(ro & rf) / len(ro) if ro else 1.0
+        tem_numero = bool(re.search(r"\d|\bmil\b|\breais\b|\bR\$", t["original"], re.I))
+        t["similaridade"] = round(sim, 2)
+        escolhido = t.get("proteger")  # o usuário pode marcar à mão: true/false no JSON
+        if escolhido is False or (escolhido is None and sim >= limiar and not tem_numero):
+            t["ativo"] = False
+            t["peso"] = 0.0
+            t["falso_pedido"] = t["falso"]
+            t["falso"] = t["original"]
+            n_pulados += 1
+        else:
+            t["ativo"] = True
+            t["peso"] = round(1.0 + (1.0 - sim) + (0.5 if tem_numero else 0.0), 2)
+    seg_ativos = sum(t["fim"] - t["ini"] for t in trechos if t["ativo"])
+    seg_total = sum(t["fim"] - t["ini"] for t in trechos) or 1.0
+    return trechos, {"ativos": len(trechos) - n_pulados, "pulados": n_pulados,
+                     "fracao_tempo_ativa": round(seg_ativos / seg_total, 2)}
+
+
 def gerar(entrada: str | Path, saida: str | Path, semente: int = 0, log=print) -> Path:
     log("  roteiro automático: transcrevendo a fala em trechos...")
     trechos = preencher_falso(transcrever_trechos(entrada), semente)

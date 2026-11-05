@@ -81,6 +81,21 @@ def gerar(pasta: Path, dados: dict) -> Path:
         )
         detalhes.append(f"<details><summary>{E(l['transcritor'])} · {E(l['config'])}</summary>{partes}</details>")
 
+    tr = r.get("trechos") or []
+    trechos_html = ""
+    if tr:
+        lin = "".join(
+            f"<tr><td>{t['ini']:.1f}s</td><td>{E(t['original'])}</td><td>{E(t['falso'])}</td>"
+            f"<td>{E(t['transcrito']) or '<i>(nada)</i>'}</td>"
+            + (f"<td class='{_cor(t['vazamento'])}'>{_pct(t['vazamento'])}<br><span class='mut'>{E(', '.join(t['vazou']))}</span></td>"
+               if t["protegido"] else "<td class='mut'>não protegido</td>")
+            + "</tr>"
+            for t in tr
+        )
+        trechos_html = ("<h2>Trecho a trecho (large-v3, após upload 128k)</h2><p class='mut'>Vazou = palavras da fala "
+                        "original (que não estão no texto falso) que a IA escreveu nesse trecho.</p><div class='scroll'><table>"
+                        "<tr><th>Tempo</th><th>Fala real</th><th>Texto falso</th><th>O que a IA escreveu</th><th>Vazou</th></tr>"
+                        + lin + "</table></div>")
     audios = "".join(
         f"<div><div class='mut'>{E(rot)}</div><audio controls preload='none' src='{E(arq)}'></audio></div>"
         for rot, arq in dados.get("audios", [])
@@ -98,6 +113,8 @@ Referência: {E(r.get('fonte_referencia', ''))}.</p>
 <h2>Transcritores</h2>
 <div class="scroll"><table><tr><th>Transcritor</th><th>Original</th><th>Protegido</th><th>Após upload 128k</th><th>Após upload 64k</th>{'<th>Texto falso (128k)</th>' if any('falso_rede_128k' in l for l in r.get('linhas', [])) else ''}</tr>
 {''.join(linhas)}</table></div>
+
+{trechos_html}
 
 <h2>Qualidade do áudio</h2>
 <div class="grid">

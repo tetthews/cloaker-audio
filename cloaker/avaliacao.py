@@ -256,3 +256,31 @@ def avaliar(
         rel.linhas.append(linha)
     rel.segundos = round(time.time() - t0, 1)
     return rel
+
+
+def por_trecho(audio16: np.ndarray, trechos: list[dict], modelo: str, dev: str) -> list[dict]:
+    """Vazamento trecho a trecho: transcreve com tempo por palavra e mede, em cada trecho,
+    quanto das palavras exclusivas da fala original aparece (e quais)."""
+    import torch  # noqa: F401
+    from faster_whisper import WhisperModel
+
+    try:
+        m = WhisperModel(modelo, device=dev, compute_type="float16" if dev == "cuda" else "int8")
+    except Exception:
+        m = WhisperModel(modelo, device="cpu", compute_type="int8")
+    segs, _ = m.transcribe(audio16, language="pt", vad_filter=True, beam_size=5, word_timestamps=True)
+    pals = [(w.start, w.end, w.word) for s in segs for w in (s.words or [])]
+    del m
+    out = []
+    for t in trechos:
+        dentro = " ".join(w for a, b, w in pals if t["ini"] - 0.3 <= (a + b) / 2 <= t["fim"] + 0.3).strip()
+        excl = [w for w in dict.fromkeys(palavras_conteudo(t["original"])) if w not in set(palavras_conteudo(t["falso"]))]
+        ouvidas = set(palavras_conteudo(dentro))
+        out.append({
+            "ini": t["ini"], "fim": t["fim"], "original": t["original"], "falso": t["falso"],
+            "protegido": t.get("proteger", True) is not False,
+            "transcrito": dentro,
+            "vazamento": round(sum(w in ouvidas for w in excl) / len(excl), 3) if excl else 0.0,
+            "vazou": [w for w in excl if w in ouvidas],
+        })
+    return out

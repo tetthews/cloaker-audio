@@ -117,7 +117,12 @@ class Transformador:
         T = len(s16)
         lotes, comps, alvos = [], [], []
         for _ in range(B):
-            i0 = 0 if self.rng.random() < 0.25 else self.rng.randrange(len(segs))
+            pesos = [t.get("peso", 1.0) for t in segs]
+            if sum(pesos) <= 0:
+                pesos = [1.0] * len(segs)
+            # recorte começando um pouco antes do trecho sorteado (pelo peso), pra ele não ficar sempre na borda
+            alvo_i = self.rng.choices(range(len(segs)), weights=pesos)[0]
+            i0 = alvo_i if self.rng.random() < 0.6 else max(0, alvo_i - self.rng.randint(1, 2))
             fins = [j for j in range(i0, len(segs)) if segs[j]["fim"] - segs[i0]["ini"] <= 29.0]
             j = self.rng.choice(fins) if self.rng.random() < 0.5 else fins[-1]
             t_ini = 0.0 if i0 == 0 and self.rng.random() < 0.5 else max(0.0, segs[i0]["ini"] - self.rng.uniform(0, 0.25))

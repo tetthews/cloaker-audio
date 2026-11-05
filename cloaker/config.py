@@ -26,6 +26,15 @@ PERFIS: dict[str, dict] = {
         lote=1,
         avaliadores=["large-v3-turbo", "large-v3"],
     ),
+    # expresso: pensado pro Mac (~25-30 min no M4). Só o turbo (o que mais engana a família large)
+    "expresso": dict(
+        modelos=["turbo"],
+        passos=350,
+        lr_rel=0.5,
+        folga_inicial_db=6.0,
+        lote=1,
+        avaliadores=["large-v3-turbo", "large-v3"],
+    ),
     "padrao": dict(
         modelos=["small", "medium", "turbo"],
         passos=800,
@@ -79,6 +88,7 @@ class Config:
     lr_rel: float = 0.2  # passo do Adam em fração do eps
     ensemble: str = "soma"  # soma (todos por passo) ou alterna
     kappa: float = 0.02  # para de empurrar um token quando p >= ~0.98
+    foco: bool = True  # roteiro: ruído só nos trechos em que a fala difere do texto falso
     semente: int = 1234
     dispositivo: str = "auto"
     memoria_modelos_gb: float = 0.0  # 0 = automático
@@ -100,6 +110,9 @@ class Config:
             lote=p["lote"],
             **base,
         )
+        for k, v in p.items():  # ajustes próprios do perfil (ex.: lr_rel do expresso)
+            if k not in ("modelos", "passos", "lote", "avaliadores"):
+                setattr(cfg, k, v)
         for k, v in sobrescritas.items():
             if v is None:
                 continue

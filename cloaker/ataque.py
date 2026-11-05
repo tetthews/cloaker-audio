@@ -63,6 +63,7 @@ def proteger(x: np.ndarray, sr: int, cfg, piscina: substitutos.Piscina, log=prin
     trans = Transformador(xm, sr, cfg, pasta_tmp)
 
     segs = None
+    mascara_tempo = None
     if cfg.modo == "roteiro":
         import json as _json
 
@@ -70,6 +71,23 @@ def proteger(x: np.ndarray, sr: int, cfg, piscina: substitutos.Piscina, log=prin
         faltando = [i for i, t in enumerate(segs) if not t.get("falso", "").strip()]
         if faltando:
             raise RuntimeError(f"roteiro sem texto falso nos trechos {faltando[:10]}")
+        mascara_tempo = None
+        if cfg.foco:
+            from .roteiro_auto import priorizar
+
+            segs, rf = priorizar(segs)
+            log(f"  foco: {rf['ativos']} trechos precisam de ruído, {rf['pulados']} pulados (fala já parecida com o texto falso) "
+                f"· {rf['fracao_tempo_ativa']:.0%} do tempo de fala")
+            if rf["pulados"]:
+                # ruído só nos trechos ativos (com folga de 0,3 s e rampa de 20 ms pra não estalar)
+                mt = torch.zeros(T, device=dev)
+                for t in segs:
+                    if t["ativo"]:
+                        a = max(0, int((t["ini"] - 0.3) * sr)); b = min(T, int((t["fim"] + 0.3) * sr))
+                        mt[a:b] = 1.0
+                k = max(1, int(0.02 * sr))
+                rampa = torch.ones(1, 1, 2 * k + 1, device=dev) / (2 * k + 1)
+                mascara_tempo = torch.nn.functional.conv1d(mt[None, None], rampa, padding=k)[0, 0].clamp(0, 1)
         fora = [m.nome for m in piscina.modelos if not hasattr(m, "perda_roteiro")]
         if fora:
             log(f"  [aviso] modo roteiro só usa Whisper; ignorando {fora}")
@@ -171,6 +189,8 @@ def proteger(x: np.ndarray, sr: int, cfg, piscina: substitutos.Piscina, log=prin
                 f = min(1.0, passo / max(1, cfg.passos * 0.6))
                 marg = cfg.margem_db - cfg.folga_inicial_db * (1 - f)
                 delta.copy_(mascara.projetar(delta, margem_db=marg, iteracoes=1))
+            if mascara_tempo is not None:
+                delta.mul_(mascara_tempo)
             delta.copy_((xm + delta).clamp(-1, 1) - xm)
         m = ativos[0]
 
@@ -206,6 +226,8 @@ def proteger(x: np.ndarray, sr: int, cfg, piscina: substitutos.Piscina, log=prin
     final = melhor[2] if melhor is not None else delta.detach()
     if cfg.margem_db is not None:
         final = mascara.projetar(final, margem_db=cfg.margem_db, iteracoes=2)
+    if mascara_tempo is not None:
+        final = final * mascara_tempo
     escolhido = melhor[1] if melhor is not None else cfg.passos - 1
     res = Resultado(
         delta=final.float().cpu().numpy(),

@@ -98,8 +98,9 @@ do README com --copy (palavras exatas da minha copy, sem reescrever).
 Quando eu pedir "nesse vídeo quero que a IA leia um texto sobre X", gere os
 trechos e escreva o texto falso de cada um sobre X (mesmo tamanho e
 estrutura de frase).
-Nos dois casos: me mostre a tabela FALA x FALSO trecho a trecho e só rode a
-proteção depois do meu ok. Se a copy for longa demais, me diga quais frases
+Nos dois casos: me mostre a tabela FALA x FALSO trecho a trecho, me pergunte
+quais trechos são sensíveis (os outros ficam com "proteger": false, o que deixa
+bem mais rápido) e só rode a proteção depois do meu ok. Se a copy for longa demais, me diga quais frases
 sugere cortar; não corte nem reescreva sem me perguntar.
 ```
 
@@ -146,7 +147,7 @@ O resultado sai numa pasta `NOME_protegido/` ao lado do vídeo:
 |---|---|---|
 | `--modo` | `automatico` (padrão) · `roteiro` · `embaralhar` · `silenciar` · `trocar` | ver "Modos" |
 | `--forca` | `leve` · `media` (padrão) · `forte` · `maxima` | teto do ruído. `media` = discreto (aprovado de ouvido); `leve` ainda mais discreto e protege menos; `forte`/`maxima` audíveis |
-| `--perfil` | `rapido` · `padrao` · `maximo` | quantos modelos e passos. Sem a opção: `padrao` com NVIDIA, `rapido` no Mac/CPU. `maximo` inclui large-v3 e wav2vec2 |
+| `--perfil` | `expresso` · `rapido` · `padrao` · `maximo` | quantos modelos e passos. Sem a opção: `padrao` com NVIDIA; no Mac/CPU `expresso` se houver trechos marcados, senão `rapido`. `expresso` (só turbo, 350 passos) serve pra poucos trechos; no vídeo inteiro protege pouco |
 | `--sem-avaliacao` | | pula a prova final (uns 5 min mais rápido) |
 | `--referencia` | `.ass` `.srt` `.txt` | o texto real do vídeo, pra medir com precisão |
 | `--frase` | texto | frase isca do modo `trocar` |
@@ -171,6 +172,14 @@ O resultado sai numa pasta `NOME_protegido/` ao lado do vídeo:
    é mais longa que a fala: corte frases inteiras até o tamanho sugerido e rode o passo 1 de novo.
    Copy longa demais = mais palavras por segundo = a IA lê menos dela.
 3. `cloaker proteger video.mp4 --modo roteiro --roteiro video_roteiro.json`
+
+**Só os trechos que importam (mais rápido, recomendado no Mac):** no `video_roteiro.json`,
+marque `"proteger": false` nos trechos que podem continuar legíveis (frases genéricas) e deixe
+só os sensíveis (preço, faixa salarial, método, oferta). O ruído fica só neles e, no Mac, o
+programa usa sozinho o perfil `expresso` (~35-40 min no M4, estimado). Teste no vídeo de 62 s
+com 6 trechos marcados: "CLT, 3 a 7 mil", "eu monto uma estrutura" vazaram **0%**; os outros
+marcados de 17% a 56%. O relatório mostra a tabela **trecho a trecho** (o que a IA escreveu em
+cada um e quais palavras vazaram).
 
 **Sem copy pronta:** `cloaker roteiro video.mp4` e preencha o campo `falso` de cada trecho no
 `video_roteiro.json` (mesma estrutura de frase, tamanho parecido, outras informações), ou peça
