@@ -24,7 +24,7 @@ PERFIS: dict[str, dict] = {
         modelos=["base", "small", "turbo"],
         passos=400,
         lote=1,
-        avaliadores=["small", "large-v3-turbo", "medium"],
+        avaliadores=["large-v3-turbo", "large-v3"],
     ),
     "padrao": dict(
         modelos=["small", "medium", "turbo"],

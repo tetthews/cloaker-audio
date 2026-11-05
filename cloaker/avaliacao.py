@@ -190,6 +190,7 @@ def avaliar(
     fonte_ref: str = "",
     falso: str | None = None,
     log=print,
+    leve: bool = False,
 ) -> Relatorio:
     """arquivos: rótulo -> caminho (original, protegido, rede_128k, rede_64k)."""
     t0 = time.time()
@@ -209,7 +210,7 @@ def avaliar(
                 configs = [
                     ("pt+vad", lambda a, fn=fn: fn(a, idioma="pt", vad=True)),
                     ("auto", lambda a, fn=fn: fn(a, idioma=None, vad=False)),
-                ]
+                ][: 1 if leve else 2]
         except Exception as e:
             log(f"  [aviso] {nome} indisponível: {e}")
             continue

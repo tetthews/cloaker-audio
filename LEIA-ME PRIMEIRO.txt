@@ -25,8 +25,9 @@ COMO INSTALAR (faça na ordem)
 COMO USAR
 ---------
 1. Arraste o vídeo em cima do atalho "Proteger Video" (Área de Trabalho/Mesa).
-2. Espere terminar (~20 min por minuto de vídeo com placa NVIDIA;
-   ~40-60 min no Mac M1/M2/M3/M4).
+2. Espere terminar (~25 min por minuto de vídeo com placa NVIDIA;
+   ~1h a 1h30 no Mac M1/M2/M3/M4. No Mac, feche o navegador, deixe na
+   tomada e com a tampa aberta).
 3. Ao lado do vídeo aparece a pasta NOME_protegido:
    - NOME_protegido.mp4 (ou .mov) -> É ESSE QUE VOCÊ POSTA
    - relatorio.html -> mostra o que a IA consegue ler antes e depois
@@ -35,6 +36,8 @@ IMPORTANTE
 ----------
 - Não coloque legenda escrita da fala no vídeo protegido (a IA lê a tela).
 - Se for fazer variações do vídeo (cor, corte, velocidade), faça ANTES de proteger.
+- Copy própria (a IA ler o seu texto no lugar da fala): veja "Modo roteiro"
+  no README. Confira o texto trecho a trecho ANTES de rodar.
 - Não é 100%: dificulta a cópia em massa por IA; quem ouvir e digitar ainda copia.
 
 Detalhes, modos e opções: README.md

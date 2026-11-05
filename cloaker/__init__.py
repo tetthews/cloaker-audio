@@ -5,4 +5,4 @@ modelos de reconhecimento de fala (família Whisper e, opcionalmente, wav2vec2),
 robusta à recompressão das redes sociais.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"

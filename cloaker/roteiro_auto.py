@@ -96,6 +96,44 @@ def preencher_falso(trechos: list[dict], semente: int = 0) -> list[dict]:
     return trechos
 
 
+def distribuir_copy(trechos: list[dict], copy: str) -> tuple[list[dict], str | None]:
+    """Espalha as palavras EXATAS da copy pelos trechos, em ordem, proporcional ao tamanho de
+    cada fala (sem reescrever nada). Devolve os trechos e um aviso se a copy não couber bem."""
+    palavras = copy.split()
+    if not palavras or not trechos:
+        return trechos, "copy vazia"
+    tam_fala = [max(1, len(t["original"])) for t in trechos]
+    total_fala = sum(tam_fala)
+    total_copy = len(" ".join(palavras))
+    razao = total_copy / total_fala
+    # fronteiras acumuladas em caracteres da copy
+    alvo, acum = [], 0
+    for n in tam_fala:
+        acum += n
+        alvo.append(acum * razao)
+    i, pos = 0, 0
+    for k, t in enumerate(trechos):
+        pedaco = []
+        restantes = len(trechos) - k - 1
+        while i < len(palavras) and (pos < alvo[k] or not pedaco) and len(palavras) - i > restantes:
+            pedaco.append(palavras[i])
+            pos += len(palavras[i]) + 1
+            i += 1
+        if k == len(trechos) - 1:
+            pedaco += palavras[i:]
+        t["falso"] = " ".join(pedaco)
+    aviso = None
+    if razao > 1.2:
+        aviso = (f"ATENÇÃO: a copy tem {total_copy} caracteres e a fala {total_fala} ({razao:.1f}x). "
+                 f"Cada trecho vai ter mais palavras do que cabe no tempo dele, e a IA lê menos da copy. "
+                 f"Recomendado: encurtar a copy para ~{int(total_fala * 1.1)} caracteres (cortando frases "
+                 f"inteiras) e gerar de novo.")
+    elif razao < 0.7:
+        aviso = (f"ATENÇÃO: a copy é bem mais curta que a fala ({total_copy} contra {total_fala} caracteres). "
+                 f"Sobra tempo de fala sem texto: recomendado alongar a copy para ~{total_fala} caracteres.")
+    return trechos, aviso
+
+
 def gerar(entrada: str | Path, saida: str | Path, semente: int = 0, log=print) -> Path:
     log("  roteiro automático: transcrevendo a fala em trechos...")
     trechos = preencher_falso(transcrever_trechos(entrada), semente)

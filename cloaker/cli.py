@@ -23,8 +23,21 @@ def _log(msg: str) -> None:
     print(msg, flush=True)
 
 
+def _perfil_auto() -> str:
+    """Com placa NVIDIA o perfil padrão; no Mac (MPS) e na CPU o rápido, que leva ~1/3 do tempo."""
+    try:
+        import torch
+
+        return "padrao" if torch.cuda.is_available() else "rapido"
+    except Exception:
+        return "padrao"
+
+
 def _cfg_de_args(a):
     from .config import Config
+
+    if getattr(a, "perfil", None) is None:
+        a.perfil = _perfil_auto()
 
     return Config.montar(
         a.forca,
@@ -130,8 +143,13 @@ def _avaliar(original: Path, protegido: Path, pasta: Path, cfg, referencia: str 
         ref_txt = avaliacao.ler_referencia(referencia)
         fonte = f"arquivo {Path(referencia).name}"
     _log("  avaliando (isso transcreve cada versão com vários modelos)...")
+    leve = dev != "cuda"
+    if leve:
+        _log("  (sem placa NVIDIA: prova leve, só original e upload 128k, 1 configuração por modelo)")
+    arquivos = {"original": original, "rede_128k": r128} if leve else {
+        "original": original, "protegido": protegido, "rede_128k": r128, "rede_64k": r64}
     rel = avaliacao.avaliar(
-        {"original": original, "protegido": protegido, "rede_128k": r128, "rede_64k": r64},
+        arquivos,
         cfg.avaliadores,
         cfg.modelos,
         dev,
@@ -139,6 +157,7 @@ def _avaliar(original: Path, protegido: Path, pasta: Path, cfg, referencia: str 
         fonte_ref=fonte,
         falso=falso,
         log=_log,
+        leve=leve,
     )
     resumo = rel.resumo()
     _log(f"  ✓ avaliação em {rel.segundos} s · {resumo}")
@@ -289,11 +308,13 @@ def cmd_roteiro(a) -> int:
 
     entrada = Path(a.entrada).expanduser().resolve()
     saida = Path(a.saida).resolve() if a.saida else entrada.with_name(entrada.stem + "_roteiro.json")
-    a16 = midia.carregar_audio(entrada, sr=16000, canais=1)[0][0]
-    dev = "cuda" if torch.cuda.is_available() else "cpu"
-    m = WhisperModel(a.modelo, device=dev, compute_type="float16" if dev == "cuda" else "int8")
-    segs, _ = m.transcribe(a16, language="pt", beam_size=5, vad_filter=False, condition_on_previous_text=False)
-    trechos = [{"ini": round(s.start, 2), "fim": round(s.end, 2), "original": s.text.strip(), "falso": ""} for s in segs]
+    from . import roteiro_auto
+
+    trechos = roteiro_auto.transcrever_trechos(entrada, a.modelo)
+    aviso = None
+    if a.copy:
+        copy = Path(a.copy).expanduser().read_text(encoding="utf-8")
+        trechos, aviso = roteiro_auto.distribuir_copy(trechos, copy)
     dados = {
         "video": str(entrada),
         "instrucao": "Preencha 'falso' em cada trecho: mesma estrutura e tamanho parecido, com outras informações.",
@@ -301,7 +322,12 @@ def cmd_roteiro(a) -> int:
     }
     saida.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
     for t in trechos:
-        _log(f"[{t['ini']:6.2f}–{t['fim']:6.2f}] {t['original']}")
+        _log(f"[{t['ini']:6.2f}–{t['fim']:6.2f}] FALA:  {t['original']}")
+        if t["falso"]:
+            _log(f"                 FALSO: {t['falso']}")
+    if aviso:
+        _log("")
+        _log(aviso)
     _log(f"\nroteiro: {saida}")
     return 0
 
@@ -311,7 +337,7 @@ def cmd_baixar(a) -> int:
     from .config import PERFIS
     from .substitutos import ALIAS_W2V
 
-    p = PERFIS[a.perfil]
+    p = PERFIS[a.perfil or _perfil_auto()]
     falhas = 0
     for nome in p["modelos"]:
         try:
@@ -377,7 +403,8 @@ def _opcoes_comuns(p: argparse.ArgumentParser) -> None:
     p.add_argument("--frase", default=None, help="frase isca do modo trocar")
     p.add_argument("--roteiro", default=None, help="modo roteiro: JSON gerado pelo comando `roteiro`, com o texto falso preenchido")
     p.add_argument("--forca", choices=list(FORCAS), default="media", help="quanto ruído é permitido (padrão: media)")
-    p.add_argument("--perfil", choices=list(PERFIS), default="padrao", help="esforço: rapido, padrao, maximo")
+    p.add_argument("--perfil", choices=list(PERFIS), default=None,
+                   help="esforço: rapido, padrao, maximo (padrão: padrao com placa NVIDIA, rapido no Mac/CPU)")
     p.add_argument("--passos", type=int, default=None, help="sobrescreve o nº de passos do perfil")
     p.add_argument("--modelos", default=None, help="substitutos separados por vírgula (ex.: small,medium,turbo)")
     p.add_argument("--avaliadores", default=None, help="transcritores da prova (ex.: large-v3,distil-large-v3)")
@@ -426,11 +453,13 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("roteiro", help="divide a fala em trechos com tempo (para o modo roteiro)")
     p.add_argument("entrada")
     p.add_argument("--modelo", default="large-v3-turbo")
+    p.add_argument("--copy", default=None,
+                   help="arquivo .txt com a copy: distribui as palavras EXATAS dela pelos trechos (sem reescrever)")
     p.add_argument("--saida", default=None)
     p.set_defaults(fn=cmd_roteiro)
 
     p = sub.add_parser("baixar", help="baixa os modelos do perfil de uma vez")
-    p.add_argument("--perfil", default="padrao")
+    p.add_argument("--perfil", default=None)
     p.set_defaults(fn=cmd_baixar)
 
     p = sub.add_parser("diagnostico", help="confere GPU, ffmpeg e dependências")

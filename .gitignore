@@ -11,3 +11,4 @@ protegidos/
 *.wav
 *.npy
 dist/
+.expat

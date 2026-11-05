@@ -46,13 +46,22 @@ brew list python@3.12 >/dev/null 2>&1 || brew install python@3.12 || erro "falho
 brew list ffmpeg >/dev/null 2>&1 || brew install ffmpeg || echo "aviso: ffmpeg do brew falhou; vai usar o embutido"
 PY="$(brew --prefix python@3.12)/bin/python3.12"
 [ -x "$PY" ] || erro "Python 3.12 não encontrado em $PY"
+rm -f "$DIR/.expat"
+if ! "$PY" -c "import pyexpat" >/dev/null 2>&1; then
+  # defeito conhecido do Python do Homebrew em macOS novo: a biblioteca de XML do sistema é velha
+  echo "Corrigindo a biblioteca de XML do Python (expat)..."
+  brew list expat >/dev/null 2>&1 || brew install expat || erro "falhou ao instalar o expat"
+  echo "$(brew --prefix expat)/lib" > "$DIR/.expat"
+  export DYLD_LIBRARY_PATH="$(cat "$DIR/.expat")${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+  "$PY" -c "import pyexpat" >/dev/null 2>&1 || erro "o Python continua sem a biblioteca de XML (pyexpat)"
+fi
 echo "ok: $("$PY" --version)"
 
 passo "4/6 Bibliotecas (PyTorch, Whisper...) · o maior download, pode parecer parado"
 PYTHON="$PY" bash "$DIR/scripts/instalar-libs.sh" || erro "falhou ao instalar as bibliotecas"
 
 passo "5/6 Baixando os modelos de IA (~5 GB, só desta vez)"
-"$DIR/.venv/bin/python" -m cloaker baixar || echo "aviso: alguns modelos serão baixados no 1º uso"
+"$DIR/cloaker.sh" baixar || echo "aviso: alguns modelos serão baixados no 1º uso"
 
 passo "6/6 Criando o app \"Proteger Vídeo\" na Mesa"
 APP="$HOME/Desktop/Proteger Vídeo.app"
@@ -84,7 +93,7 @@ else
 fi
 
 passo "Conferindo"
-"$DIR/.venv/bin/python" -m cloaker diagnostico
+"$DIR/cloaker.sh" diagnostico
 
 echo
 echo "=============================================="

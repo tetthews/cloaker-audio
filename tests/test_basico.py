@@ -61,3 +61,13 @@ def test_recuperacao_exclusiva():
     falso = "você compra peixe azul descascado sozinha"
     assert avaliacao.recuperacao_exclusiva(orig, falso, falso) == 0.0
     assert avaliacao.recuperacao_exclusiva(falso, orig, falso) == 1.0
+
+
+def test_distribuir_copy_mantem_texto_exato():
+    from cloaker.roteiro_auto import distribuir_copy
+
+    trechos = [{"original": "Você é CLT e ganha bem"}, {"original": "Clica aqui e aplica agora"}]
+    copy = "Você trabalha em horário comercial? Clique no botão abaixo."
+    t, aviso = distribuir_copy(trechos, copy)
+    assert " ".join(x["falso"] for x in t) == copy
+    assert all(x["falso"] for x in t)

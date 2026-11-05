@@ -7,7 +7,7 @@ if [ $# -eq 0 ]; then
 fi
 for f in "$@"; do
   echo "=== Protegendo $(basename "$f") ==="
-  "$DIR/.venv/bin/python" -m cloaker proteger "$f"
+  "$DIR/cloaker.sh" proteger "$f"
 done
 echo
 echo "Pronto. Cada vídeo ganhou uma pasta NOME_protegido ao lado do original, com o relatorio.html."

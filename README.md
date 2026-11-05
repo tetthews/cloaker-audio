@@ -35,7 +35,13 @@ instalar. Não instala nada.
 |---|---|---|
 | Windows | 64 bits, 8 GB de RAM, 12 GB livres | placa **NVIDIA** com 6 GB+ (ex.: RTX 3060/4060), 16 GB de RAM, 20 GB livres |
 | Mac | macOS 13, 8 GB de RAM, 12 GB livres | chip **M1/M2/M3/M4**, 16 GB de RAM |
-| Tempo por vídeo de 1 min | horas (sem placa de vídeo) | ~20 min (NVIDIA) · ~40–60 min (Mac M) |
+| Tempo por vídeo de 1 min | horas (sem placa de vídeo) | ~25 min (NVIDIA, perfil padrão) · ~1 h a 1h30 (Mac M, perfil rápido, estimado) |
+
+> **No Mac o programa usa sozinho o perfil `rapido`** (menos modelos e passos) e uma prova
+> mais curta. Medido num MacBook Air M4 de 16 GB com o perfil padrão: **3h15** por vídeo de
+> 1 min, por isso o rápido virou o padrão no Mac. Protege um pouco menos (no teste, 5% a 15%
+> da fala recuperável contra 3% no padrão). Feche o navegador e outros programas pesados,
+> deixe na tomada e com a tampa aberta.
 
 ### 3. Instalar
 
@@ -87,9 +93,14 @@ Instale pra mim o Cloaker de áudio: https://github.com/tetthews/cloaker-audio
 4. No fim rode "cloaker diagnostico" e me ensine a proteger um vídeo.
 
 Depois disso, quando eu pedir "protege esse vídeo", rode o modo automatico.
-Quando eu pedir "nesse vídeo quero que a IA leia um texto sobre X", use o
-modo roteiro do README: gere os trechos, escreva o texto falso de cada um
-sobre X (mesmo tamanho e estrutura de frase) e rode a proteção.
+Quando eu mandar uma copy para a IA ler no lugar da fala, use o modo roteiro
+do README com --copy (palavras exatas da minha copy, sem reescrever).
+Quando eu pedir "nesse vídeo quero que a IA leia um texto sobre X", gere os
+trechos e escreva o texto falso de cada um sobre X (mesmo tamanho e
+estrutura de frase).
+Nos dois casos: me mostre a tabela FALA x FALSO trecho a trecho e só rode a
+proteção depois do meu ok. Se a copy for longa demais, me diga quais frases
+sugere cortar; não corte nem reescreva sem me perguntar.
 ```
 
 ---
@@ -116,7 +127,7 @@ Windows: `cloaker.bat COMANDO` · Mac: `./cloaker.sh COMANDO` (dentro da pasta).
 |---|---|
 | Proteger um vídeo | `cloaker proteger video.mp4` |
 | Pasta inteira | `cloaker lote PASTA` |
-| Texto falso escolhido | `cloaker roteiro video.mp4` e depois `cloaker proteger video.mp4 --modo roteiro --roteiro video_roteiro.json` |
+| Texto falso escolhido | `cloaker roteiro video.mp4 --copy copy.txt` e depois `cloaker proteger video.mp4 --modo roteiro --roteiro video_roteiro.json` |
 | Variações de criativo | `cloaker variacoes video.mp4 -n 5 --proteger` |
 | Só medir um protegido | `cloaker avaliar original.mp4 protegido.mp4` |
 | Baixar os modelos | `cloaker baixar` |
@@ -135,7 +146,7 @@ O resultado sai numa pasta `NOME_protegido/` ao lado do vídeo:
 |---|---|---|
 | `--modo` | `automatico` (padrão) · `roteiro` · `embaralhar` · `silenciar` · `trocar` | ver "Modos" |
 | `--forca` | `leve` · `media` (padrão) · `forte` · `maxima` | teto do ruído. `media` = discreto (aprovado de ouvido); `leve` ainda mais discreto e protege menos; `forte`/`maxima` audíveis |
-| `--perfil` | `rapido` · `padrao` · `maximo` | quantos modelos e passos. `rapido` pra Mac/PC fraco; `maximo` inclui large-v3 e wav2vec2 |
+| `--perfil` | `rapido` · `padrao` · `maximo` | quantos modelos e passos. Sem a opção: `padrao` com NVIDIA, `rapido` no Mac/CPU. `maximo` inclui large-v3 e wav2vec2 |
 | `--sem-avaliacao` | | pula a prova final (uns 5 min mais rápido) |
 | `--referencia` | `.ass` `.srt` `.txt` | o texto real do vídeo, pra medir com precisão |
 | `--frase` | texto | frase isca do modo `trocar` |
@@ -152,10 +163,26 @@ O resultado sai numa pasta `NOME_protegido/` ao lado do vídeo:
 
 ### Modo roteiro (você escolhe o texto falso)
 
-1. `cloaker roteiro video.mp4` divide a fala em trechos com tempo e grava `video_roteiro.json`.
-2. Preencha o campo `falso` de cada trecho: mesma estrutura de frase, tamanho parecido, outras
-   informações. Ou peça ao Claude: "nesse vídeo quero que a IA leia um texto sobre X".
+**Com a sua copy pronta** (as palavras exatas, sem reescrever):
+
+1. Salve a copy num `copy.txt` e rode `cloaker roteiro video.mp4 --copy copy.txt`.
+   Ele divide a fala em trechos, espalha a copy por eles e mostra FALA × FALSO de cada trecho.
+2. **Confira a tabela antes de proteger.** Se aparecer "ATENÇÃO: a copy tem ... (1.3x)", a copy
+   é mais longa que a fala: corte frases inteiras até o tamanho sugerido e rode o passo 1 de novo.
+   Copy longa demais = mais palavras por segundo = a IA lê menos dela.
 3. `cloaker proteger video.mp4 --modo roteiro --roteiro video_roteiro.json`
+
+**Sem copy pronta:** `cloaker roteiro video.mp4` e preencha o campo `falso` de cada trecho no
+`video_roteiro.json` (mesma estrutura de frase, tamanho parecido, outras informações), ou peça
+ao Claude: "nesse vídeo quero que a IA leia um texto sobre X".
+
+> **Regra para quem opera (pessoa ou Claude):** mostre o texto falso trecho a trecho e espere o
+> ok antes de proteger. Nunca reescreva a copy do cliente sem mostrar. Cada rodada leva de
+> 20 min (NVIDIA) a mais de 1 h (Mac).
+
+Expectativa realista: a IA não lê a copy inteira palavra por palavra. Nos testes, de 28% a 36%
+das palavras transcritas vêm do texto falso; o resto sai embaralhado. O que importa é que a
+fala original some (3% a 15% recuperável).
 
 Quanto mais o texto falso "soa" parecido com o verdadeiro (troca números, nomes, passos, oferta),
 mais fácil a IA cair. Onde a troca não pega, o treino ainda empurra a IA pra longe do original.

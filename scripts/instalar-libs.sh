@@ -2,6 +2,8 @@
 # Instalação no Mac (Apple Silicon usa a GPU via MPS) ou Linux.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# o macOS apaga DYLD_* ao abrir o bash: relê a correção do expat (ver o instalador do Mac)
+if [ -f .expat ]; then export DYLD_LIBRARY_PATH="$(cat .expat)${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"; fi
 echo "== Cloaker de áudio: instalação =="
 PY="${PYTHON:-python3}"
 if ! command -v "$PY" >/dev/null; then
