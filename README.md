@@ -72,6 +72,28 @@ bibliotecas → modelos de IA (~5 GB) → atalho. No fim aparece **"Proteger Vid
 Não precisa escolher nada: o modo padrão (`automatico`) transcreve a sua fala e treina o
 escudo pra IA escrever frases neutras do dia a dia no lugar dela.
 
+### 5. Painel no navegador (opcional)
+
+Para quem prefere uma tela a arrastar no atalho ou usar o terminal:
+
+| Windows | Mac |
+|---|---|
+| dois cliques em **`3 - Abrir o painel (Windows).bat`** | botão direito em **`3 - Abrir o painel (Mac).command` → Abrir** |
+
+Abre `http://127.0.0.1:8765` no navegador (só neste computador). Deixe a janela preta aberta
+enquanto usa; fechar ela desliga o painel. No painel dá para:
+
+- arrastar o vídeo e escolher modo, força, perfil e se faz a prova final;
+- no modo **"eu escolho o texto falso"**: ver a tabela FALA × FALSO, editar o texto de cada
+  trecho, desmarcar os trechos genéricos e só então mandar proteger (com aviso se o texto falso
+  ficou maior que a fala);
+- acompanhar a etapa e o registro do programa, com fila (um vídeo por vez) e botão de cancelar;
+- no fim, baixar o vídeo protegido, abrir o `relatorio.html` e a pasta do resultado;
+- rodar o diagnóstico.
+
+Os vídeos enviados e os resultados ficam em `painel-trabalhos/` (fora do git). O painel só usa
+a biblioteca padrão do Python e chama os mesmos comandos do `cloaker`.
+
 ### Instalar com o Claude Code (prompt pronto)
 
 Se você usa o [Claude Code](https://claude.com/claude-code), cole isto nele:
@@ -250,6 +272,7 @@ ou reprocessar o áudio de um vídeo já protegido enfraquece a proteção.
 1 - Verificar o computador (Windows|Mac)   confere se o computador roda
 2 - Instalar no Windows|Mac                 instalador passo a passo
 Proteger video (arraste aqui).bat           uso no Windows · proteger.command no Mac
+3 - Abrir o painel (Windows|Mac)            painel no navegador (painel/)
 cloaker.bat / cloaker.sh                    linha de comando
 scripts/                                    verificação e instaladores
 cloaker/

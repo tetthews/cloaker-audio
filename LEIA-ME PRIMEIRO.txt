@@ -32,6 +32,14 @@ COMO USAR
    - NOME_protegido.mp4 (ou .mov) -> É ESSE QUE VOCÊ POSTA
    - relatorio.html -> mostra o que a IA consegue ler antes e depois
 
+PAINEL NO NAVEGADOR (OPCIONAL)
+------------------------------
+Windows: dois cliques em  "3 - Abrir o painel (Windows).bat"
+Mac:     botão direito em "3 - Abrir o painel (Mac).command" > Abrir
+Abre uma página no navegador para arrastar o vídeo, escolher o texto
+falso trecho a trecho, acompanhar a fila e baixar o resultado.
+Deixe a janela preta aberta enquanto usa.
+
 IMPORTANTE
 ----------
 - Não coloque legenda escrita da fala no vídeo protegido (a IA lê a tela).
