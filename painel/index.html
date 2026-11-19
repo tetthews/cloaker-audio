@@ -262,7 +262,7 @@ async function detalhe(j){
   if(['fila','rodando'].includes(d.estado)){
     h+=htmlPassos(d);
     if(d.estado==='rodando')h+=htmlPrevisao(d);
-    if(d.estado==='rodando')h+=`<div class="dica">Pode deixar rodando. Não feche esta janela nem o computador. Feche o navegador e programas pesados para ir mais rápido.</div>`;
+    if(d.estado==='rodando')h+=`<div class="dica">Pode fechar esta página e até o painel: a proteção continua e aparece aqui quando você abrir de novo. Não desligue o computador nem feche a tampa. Fechar programas pesados deixa mais rápido.</div>`;
     h+=`<div class="linha" style="margin-top:8px"><button class="perigo" onclick="cancelar('${d.id}')">Cancelar</button></div>`;
   }
   if(d.estado==='aguardando_texto')h+=await htmlRoteiro(d);

@@ -35,7 +35,7 @@ EXT_OK = {".mp4", ".mov", ".m4v", ".mkv", ".webm", ".m4a", ".mp3", ".wav"}
 LOCK = threading.RLock()
 JOBS: dict[str, dict] = {}
 FILA: list[tuple[str, str]] = []  # (id do trabalho, fase)
-ATUAL: dict = {"id": None, "proc": None}
+ATUAL: dict = {"id": None, "proc": None, "pid": None}
 PASTA: Path = AQUI
 TRABALHOS: Path = AQUI
 
@@ -100,10 +100,17 @@ def carregar_existentes() -> None:
                 j = json.loads(f.read_text(encoding="utf-8"))
             except Exception:
                 continue
-            if j.get("estado") in ("fila", "rodando"):  # painel foi fechado no meio
-                j["estado"] = "erro"
-                j["erro"] = "O painel foi fechado enquanto isso rodava. Envie o vídeo de novo."
             JOBS[j["id"]] = j
+    # o painel foi fechado no meio: a proteção roda num processo à parte e pode ter seguido sozinha
+    for j in sorted(JOBS.values(), key=lambda x: x.get("criado", 0)):
+        if j.get("estado") == "rodando":
+            if ATUAL["id"] is None and pid_vivo(j.get("pid")):
+                ATUAL.update(id=j["id"], pid=j["pid"])
+                threading.Thread(target=acompanhar_orfao, args=(j["id"],), daemon=True).start()
+            else:
+                concluir(j, j.get("fase"), None)
+        elif j.get("estado") == "fila":
+            FILA.append((j["id"], j.get("fase") or "proteger"))
 
 
 def pasta_saida(job: dict) -> Path:
@@ -180,27 +187,68 @@ def rodar(jid: str, fase: str) -> None:
     rc = -1
     try:
         cmd = montar_comando(job, fase)
-        kw = {"creationflags": 0x00000200} if WINDOWS else {"start_new_session": True}  # grupo próprio, para cancelar
+        # processo à parte (grupo e sessão próprios): fechar a janela do painel não derruba a proteção,
+        # e o cancelar consegue parar o grupo inteiro. No Windows: novo grupo + sem janela de console.
+        kw = {"creationflags": 0x00000200 | 0x08000000} if WINDOWS else {"start_new_session": True}
         proc = subprocess.Popen(cmd, cwd=PASTA, env=ambiente(), stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, **kw)
-        ATUAL["proc"] = proc
+        with LOCK:
+            ATUAL.update(proc=proc, pid=proc.pid)
+            job["pid"] = proc.pid
+            salvar(job)
         rc = proc.wait()
     except Exception as e:  # noqa: BLE001
         log.write(f"[painel] erro ao iniciar: {e}\n")
     finally:
-        ATUAL.update(id=None, proc=None)
+        ATUAL.update(id=None, proc=None, pid=None)
         log.close()
+    concluir(job, fase, rc)
+
+
+def concluir(job: dict, fase: str | None, rc: int | None) -> None:
+    """Fecha o trabalho olhando o que ficou na pasta. rc None: processo que o painel reaberto não iniciou."""
+    pj = pasta_job(job["id"])
     with LOCK:
         job["fim"] = time.time()
+        job.pop("pid", None)
         if job.get("cancelado"):
             job.update(estado="cancelado", erro=None)
-        elif rc != 0:
+        elif rc not in (0, None):
             job.update(estado="erro", erro=f"O programa terminou com erro (código {rc}). Veja o registro abaixo.")
         elif fase == "preparar":
-            job.update(estado="aguardando_texto", tem_roteiro=(pj / "roteiro.json").exists())
+            ok = (pj / "roteiro.json").exists()
+            job.update(estado="aguardando_texto" if ok else "erro", tem_roteiro=ok,
+                       erro=None if ok else "A transcrição parou antes de terminar. Envie o vídeo de novo.")
         else:
-            ok = (pasta_saida(job) / "relatorio.json").exists()
-            job.update(estado="ok" if ok else "erro", erro=None if ok else "Terminou, mas não gerou o resultado. Veja o registro.")
+            ok = (pasta_saida(job) / "relatorio.html").exists()  # é o último arquivo que o programa grava
+            falha = ("Terminou, mas não gerou o resultado. Veja o registro." if rc == 0 else
+                     "A proteção parou antes de terminar (o computador desligou ou o processo foi fechado). Envie o vídeo de novo.")
+            job.update(estado="ok" if ok else "erro", erro=None if ok else falha)
         salvar(job)
+
+
+def pid_vivo(pid) -> bool:
+    """O processo ainda existe e é o do Cloaker (o número pode ter sido reaproveitado por outro programa)."""
+    if not pid:
+        return False
+    try:
+        if WINDOWS:
+            out = subprocess.run(["tasklist", "/FI", f"PID eq {int(pid)}", "/NH", "/FO", "CSV"],
+                                 capture_output=True, text=True, creationflags=0x08000000).stdout
+            return f'"{int(pid)}"' in out and "python" in out.lower()
+        out = subprocess.run(["ps", "-p", str(int(pid)), "-o", "command="], capture_output=True, text=True).stdout
+        return "cloaker" in out
+    except Exception:
+        return False
+
+
+def acompanhar_orfao(jid: str) -> None:
+    """Proteção que seguiu rodando enquanto o painel estava fechado: espera ela acabar e fecha o trabalho."""
+    job = JOBS[jid]
+    while pid_vivo(job.get("pid")):
+        time.sleep(5)
+    with LOCK:
+        ATUAL.update(id=None, proc=None, pid=None)
+    concluir(job, job.get("fase"), None)
 
 
 def trabalhador() -> None:
@@ -224,18 +272,21 @@ def enfileirar(jid: str, fase: str) -> None:
 
 
 def matar_atual() -> None:
-    proc = ATUAL.get("proc")
-    if not proc or proc.poll() is not None:
+    proc, pid = ATUAL.get("proc"), ATUAL.get("pid")
+    if proc is not None and proc.poll() is not None:
+        return
+    if proc is None and not pid_vivo(pid):
         return
     try:
         if WINDOWS:
-            subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)], capture_output=True)
+            subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)], capture_output=True)
         else:
             import signal
 
-            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+            os.killpg(os.getpgid(pid), signal.SIGTERM)
     except Exception:
-        proc.terminate()
+        if proc is not None:
+            proc.terminate()
 
 
 # ----------------------------------------------------------------------------- HTTP
@@ -487,7 +538,7 @@ def main() -> None:
     threading.Thread(target=trabalhador, daemon=True).start()
     srv = ThreadingHTTPServer(("127.0.0.1", a.porta), H)
     url = f"http://127.0.0.1:{a.porta}"
-    print(f"Painel do Cloaker no ar: {url}\nPasta do Cloaker: {PASTA}\nFeche esta janela para encerrar.", flush=True)
+    print(f"Painel do Cloaker no ar: {url}\nPasta do Cloaker: {PASTA}\nFeche esta janela para desligar o painel. Uma proteção em andamento continua.", flush=True)
     if not a.sem_abrir:
         threading.Timer(0.8, lambda: webbrowser.open(url)).start()
     try:
@@ -495,7 +546,7 @@ def main() -> None:
     except KeyboardInterrupt:
         pass
     finally:
-        matar_atual()
+        pass  # fechar o painel não para a proteção: ela segue e o painel retoma o acompanhamento ao reabrir
 
 
 if __name__ == "__main__":

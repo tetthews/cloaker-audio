@@ -6,6 +6,6 @@ if not exist "%~dp0.venv\Scripts\python.exe" (
   pause
   exit /b 1
 )
-echo Deixe esta janela aberta enquanto usa o painel. Fechar a janela desliga o painel.
+echo Fechar esta janela desliga o painel. Uma protecao em andamento continua e volta a aparecer quando abrir de novo.
 "%~dp0.venv\Scripts\python.exe" "%~dp0painel\painel.py" --pasta "%~dp0."
 pause

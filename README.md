@@ -80,8 +80,8 @@ Para quem prefere uma tela a arrastar no atalho ou usar o terminal:
 |---|---|
 | dois cliques em **`3 - Abrir o painel (Windows).bat`** | botão direito em **`3 - Abrir o painel (Mac).command` → Abrir** |
 
-Abre `http://127.0.0.1:8765` no navegador (só neste computador). Deixe a janela preta aberta
-enquanto usa; fechar ela desliga o painel. No painel dá para:
+Abre `http://127.0.0.1:8765` no navegador (só neste computador). Fechar a janela preta desliga
+o painel, mas uma proteção em andamento continua e volta a aparecer quando você abrir de novo. No painel dá para:
 
 - arrastar o vídeo e escolher modo, força, perfil e se faz a prova final;
 - no modo **"eu escolho o texto falso"**: ver a tabela FALA × FALSO, editar o texto de cada

@@ -7,5 +7,5 @@ if [ ! -x "$PY" ]; then
   echo "O Cloaker ainda não está instalado. Rode primeiro o \"2 - Instalar no Mac.command\"."
   read -n 1 -s -r -p "Aperte qualquer tecla para fechar."; exit 1
 fi
-echo "Deixe esta janela aberta enquanto usa o painel. Fechar a janela desliga o painel."
+echo "Fechar esta janela desliga o painel. Uma proteção em andamento continua e volta a aparecer quando abrir de novo."
 "$PY" "$DIR/painel/painel.py" --pasta "$DIR"

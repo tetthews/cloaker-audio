@@ -38,7 +38,7 @@ Windows: dois cliques em  "3 - Abrir o painel (Windows).bat"
 Mac:     botão direito em "3 - Abrir o painel (Mac).command" > Abrir
 Abre uma página no navegador para arrastar o vídeo, escolher o texto
 falso trecho a trecho, acompanhar a fila e baixar o resultado.
-Deixe a janela preta aberta enquanto usa.
+Fechar a janela preta desliga o painel; uma proteção em andamento continua.
 
 IMPORTANTE
 ----------
