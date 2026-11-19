@@ -319,7 +319,26 @@ class W2VSubstituto(Substituto):
 def criar(nome: str, cfg, dtype: torch.dtype) -> Substituto:
     if nome.startswith("w2v") or "wav2vec" in nome:
         return W2VSubstituto(nome, cfg, dtype)
+    if _motor_mlx() and cfg.modo != "embaralhar":
+        from .substitutos_mlx import MLXWhisperSubstituto
+
+        return MLXWhisperSubstituto(nome, cfg, dtype)
     return WhisperSubstituto(nome, cfg, dtype)
+
+
+def _motor_mlx() -> bool:
+    """CLOAKER_MOTOR=mlx liga o motor MLX (Mac Apple Silicon com `mlx` instalado).
+    Qualquer outro valor (ou MLX ausente) mantém o PyTorch, como sempre foi."""
+    import os
+
+    if os.environ.get("CLOAKER_MOTOR", "torch").strip().lower() != "mlx":
+        return False
+    try:
+        import mlx.core  # noqa: F401
+    except Exception:
+        print("  [aviso] CLOAKER_MOTOR=mlx, mas o pacote mlx não está instalado; usando PyTorch")
+        return False
+    return True
 
 
 class Piscina:
