@@ -61,6 +61,9 @@ td textarea{min-height:56px;font-size:13px}
 .res small{display:block;color:var(--mut);font-size:11px}
 .aviso{background:var(--wabg);color:var(--wa);padding:9px 12px;border-radius:8px;font-size:13px;margin-top:10px}
 .erro{background:var(--erbg);color:var(--er);padding:9px 12px;border-radius:8px;font-size:13px;margin-top:10px}
+.prev{background:var(--acbg);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:13px}
+.prev b{font-size:15px}
+.prev .barra{background:var(--card)}
 .barra{height:6px;border-radius:99px;background:var(--bd);overflow:hidden;margin-top:10px}
 .barra i{display:block;height:100%;background:var(--ac);width:0;transition:width .2s}
 dialog{border:1px solid var(--bd);border-radius:12px;background:var(--card);color:var(--tx);max-width:720px;width:92%}
@@ -124,6 +127,32 @@ const NOMES={fila:'Na fila',rodando:'Rodando',aguardando_texto:'Esperando você'
 const CLS={fila:'wa',rodando:'ac',aguardando_texto:'wa',ok:'ok',erro:'er',cancelado:''};
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const api=(u,b)=>fetch(u,b===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json());
+const seg=t=>t.split(':').map(Number).reduce((a,b)=>a*60+b,0);
+const hora=ts=>new Date(ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+// a barra do programa reescreve a mesma linha com \r: fica só a última versão de cada linha
+const semCR=t=>t.split('\n').map(l=>{const p=l.split('\r').filter(x=>x.trim());return p.length?p[p.length-1]:''}).join('\n');
+const PROVA_S=300; // a conferência final leva uns 5 min (README: pular a prova economiza ~5 min)
+function progresso(t){
+  const re=/protegendo:\s*(\d+)%\|[^|]*\|\s*(\d+)\/(\d+)\s*\[([\d:]+)<([\d:?]+)/g;
+  let m,u=null; const fim=t.slice(-4000); while((m=re.exec(fim)))u=m;
+  if(!u)return null;
+  return {pct:+u[1],passo:+u[2],total:+u[3],dec:seg(u[4]),rest:u[5].includes('?')?null:seg(u[5])};
+}
+function htmlPrevisao(j){
+  const t=logs[j.id]||'', prova=!(j.opcoes||{}).sem_avaliacao;
+  if(j.fase==='preparar')return `<div class="prev">Transcrevendo a fala. Costuma levar poucos minutos.</div>`;
+  if(/arquivo protegido/.test(t)){
+    if(!prova||/relatório:/.test(t))return `<div class="prev">Finalizando.</div>`;
+    return `<div class="prev">Ruído pronto. Conferindo o que a IA consegue ler.<br><b>Previsão: por volta de ${hora(Date.now()+PROVA_S*1000)}</b></div>`;
+  }
+  const p=progresso(t);
+  if(!p)return `<div class="prev">Preparando. A previsão de término aparece quando começar a criar o ruído.</div>`;
+  if(p.rest===null)return `<div class="prev">Criando o ruído: passo ${p.passo} de ${p.total}. Calculando a previsão…<div class="barra"><i style="width:${p.pct}%"></i></div></div>`;
+  const tot=p.rest+(prova?PROVA_S:30);
+  return `<div class="prev">Criando o ruído: passo ${p.passo} de ${p.total} (${p.pct}%), há ${dur(p.dec)}.<br>
+    <b>Previsão: por volta de ${hora(Date.now()+tot*1000)}</b> <span class="dica">(faltam uns ${dur(tot)}${prova?', já contando a conferência final':''})</span>
+    <div class="barra"><i style="width:${p.pct}%"></i></div></div>`;
+}
 const dur=s=>{s=Math.round(s);return s>=3600?`${Math.floor(s/3600)} h ${Math.floor(s%3600/60)} min`:s>=60?`${Math.floor(s/60)} min`:`${s} s`};
 
 // ---- novo vídeo
@@ -208,7 +237,9 @@ function render(){
   const foco=document.activeElement; if(foco&&foco.closest&&foco.closest('.job textarea'))return;
   L.innerHTML=js.map(j=>{
     const aberto=abertos.has(j.id);
-    const t=j.inicio&&j.estado==='rodando'?` · ${dur(Date.now()/1000-j.inicio)}`:'';
+    let t=j.inicio&&j.estado==='rodando'?` · ${dur(Date.now()/1000-j.inicio)}`:'';
+    const pr=j.estado==='rodando'&&logs[j.id]?progresso(logs[j.id]):null;
+    if(pr)t+=` · ${pr.pct}%`+(pr.rest!==null?` · termina ~${hora(Date.now()+(pr.rest+((j.opcoes||{}).sem_avaliacao?30:PROVA_S))*1000)}`:'');
     return `<div class="job" data-id="${j.id}">
       <div class="topo" onclick="alternar('${j.id}')"><span class="nome">${esc(j.arquivo)}</span>
         <span class="chip ${CLS[j.estado]||''}">${NOMES[j.estado]||j.estado}${j.posicao_fila?' #'+j.posicao_fila:''}</span>
@@ -230,13 +261,14 @@ async function detalhe(j){
   if(d.erro)h+=`<div class="erro">${esc(d.erro)}</div>`;
   if(['fila','rodando'].includes(d.estado)){
     h+=htmlPassos(d);
+    if(d.estado==='rodando')h+=htmlPrevisao(d);
     if(d.estado==='rodando')h+=`<div class="dica">Pode deixar rodando. Não feche esta janela nem o computador. Feche o navegador e programas pesados para ir mais rápido.</div>`;
     h+=`<div class="linha" style="margin-top:8px"><button class="perigo" onclick="cancelar('${d.id}')">Cancelar</button></div>`;
   }
   if(d.estado==='aguardando_texto')h+=await htmlRoteiro(d);
   if(d.estado==='ok')h+=htmlResultado(d);
   if(['erro','cancelado','ok'].includes(d.estado))h+=`<div class="linha" style="margin-top:10px"><button class="perigo" onclick="excluir('${d.id}')">Apagar</button></div>`;
-  h+=`<details style="margin-top:10px"${d.estado==='rodando'||d.estado==='erro'?' open':''}><summary class="dica" style="cursor:pointer">Registro do programa</summary><pre class="log" id="log-${d.id}">${esc(logs[d.id]||'')}</pre></details>`;
+  h+=`<details style="margin-top:10px"${d.estado==='rodando'||d.estado==='erro'?' open':''}><summary class="dica" style="cursor:pointer">Registro do programa</summary><pre class="log" id="log-${d.id}">${esc(semCR(logs[d.id]||''))}</pre></details>`;
   const ant=el.querySelector('details'), abertoLog=ant?ant.open:null;
   if(el.dataset.estado!==d.estado||d.estado==='rodando'||d.estado==='fila'||!el.dataset.estado){
     const sc=el.querySelector('pre.log')?.scrollTop;
