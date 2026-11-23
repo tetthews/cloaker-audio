@@ -88,18 +88,18 @@ dialog::backdrop{background:#0008}
 
     <div class="modos">
       <div class="modo sel" data-modo="automatico"><b>Automático (recomendado)</b><span>A IA que copia escreve frases neutras do dia a dia no lugar da sua fala. Você não precisa escolher nada.</span></div>
-      <div class="modo" data-modo="roteiro"><b>Eu escolho o texto falso</b><span>Você vê a fala trecho a trecho, escreve o que a IA vai ler no lugar e confere antes de proteger.</span></div>
+      <div class="modo" data-modo="roteiro"><b>Eu escolho o texto falso</b><span>Você vê a fala trecho a trecho, escreve o texto falso e confere antes de proteger. A fala some para a IA, mas ela lê só parte do texto falso (cerca de um terço na força forte).</span></div>
     </div>
 
     <div id="boxCopy" hidden style="margin-top:12px">
       <label class="c">Sua copy (opcional)</label>
       <textarea id="copy" placeholder="Cole aqui o texto exato que a IA deve ler no lugar da fala. Se deixar vazio, você escreve o texto falso trecho a trecho na próxima tela."></textarea>
-      <div class="dica">Copy maior que a fala faz a IA ler menos dela. A próxima tela avisa se estiver longa.</div>
+      <div class="dica">A copy precisa ter mais ou menos o tamanho da fala. Copy longa faz a IA ler metade do que leria, e a próxima tela não deixa proteger com ela. Mesmo no tamanho certo, a IA não lê a copy inteira: na força forte, cerca de um terço.</div>
     </div>
 
     <div class="grade">
       <div><label class="c">Força do ruído</label>
-        <select id="forca"><option value="leve">Leve (mais discreto, protege menos)</option><option value="media" selected>Média (padrão)</option><option value="forte">Forte (dá para ouvir)</option><option value="maxima">Máxima (dá para ouvir)</option></select></div>
+        <select id="forca"><option value="leve">Leve (mais discreto, protege menos)</option><option value="media" selected>Média (padrão)</option><option value="forte">Forte (ruído leve, recomendado para texto falso)</option><option value="maxima">Máxima (ruído forte, vídeo quase inutilizável)</option></select></div>
       <div><label class="c">Velocidade x proteção</label>
         <select id="perfil"><option value="auto" selected>Automático (o programa escolhe)</option><option value="expresso">Expresso (poucos trechos)</option><option value="rapido">Rápido</option><option value="padrao">Padrão</option><option value="maximo">Máximo (muito lento)</option></select></div>
       <div><label class="c">Prova final</label>
@@ -164,7 +164,7 @@ inp.onchange=()=>escolher(inp.files[0]);
 drop.addEventListener('drop',ev=>escolher(ev.dataTransfer.files[0]));
 function escolher(f){ if(!f)return; arquivo=f; drop.classList.add('tem'); $('#dropTxt').textContent=f.name+' ('+(f.size/1048576).toFixed(0)+' MB)'; atualizarBtn(); }
 function atualizarBtn(){ const ok=arquivo&&estado&&estado.instalado; $('#btnIr').disabled=!ok; $('#dicaIr').textContent=!estado?.instalado?'O Cloaker não está instalado nesta pasta.':arquivo?(modo==='roteiro'?'Primeiro o programa transcreve a fala; depois você escreve o texto falso.':'Leva de 20 min a algumas horas, conforme o computador.'):'Escolha um vídeo primeiro.'; }
-document.querySelectorAll('.modo').forEach(m=>m.onclick=()=>{modo=m.dataset.modo;document.querySelectorAll('.modo').forEach(x=>x.classList.toggle('sel',x===m));$('#boxCopy').hidden=modo!=='roteiro';atualizarBtn();});
+document.querySelectorAll('.modo').forEach(m=>m.onclick=()=>{modo=m.dataset.modo;document.querySelectorAll('.modo').forEach(x=>x.classList.toggle('sel',x===m));$('#boxCopy').hidden=modo!=='roteiro';$('#forca').value=modo==='roteiro'?'forte':'media';atualizarBtn();});
 
 $('#btnIr').onclick=()=>{
   const btn=$('#btnIr'); btn.disabled=true; const barra=$('#barraEnvio'); barra.hidden=false;
@@ -283,15 +283,27 @@ async function htmlRoteiro(d){
   if(!rotEdit[d.id]){const r=await api(`/api/jobs/${d.id}/roteiro`); rotEdit[d.id]=(r.trechos||[]).map(t=>({...t,proteger:t.proteger!==false}));}
   const tr=rotEdit[d.id];
   const nf=s=>(s||'').trim().split(/\s+/).filter(Boolean).length;
-  const po=tr.reduce((a,t)=>a+nf(t.original),0), pf=tr.reduce((a,t)=>a+(t.proteger?nf(t.falso):nf(t.original)),0);
-  return `<div class="aviso">Confira cada trecho. À esquerda está o que você falou; à direita, o que a IA vai ler no lugar. Use frases do mesmo tamanho e com a mesma estrutura. Desmarque "proteger" nos trechos genéricos (sem preço, método ou oferta): fica bem mais rápido.${pf>po*1.15?`<br><b>Atenção:</b> o texto falso tem ${pf} palavras e a fala tem ${po}. Texto falso maior que a fala faz a IA ler menos dele. Corte frases inteiras.`:''}</div>
+  const m=medirFalso(tr);
+  return `<div class="aviso">Confira cada trecho. À esquerda está o que você falou; à direita, o texto falso que a IA deve ler no lugar. Use frases do mesmo tamanho e com a mesma estrutura. Desmarque "proteger" nos trechos genéricos (sem preço, método ou oferta): fica bem mais rápido.<br>A IA não vai ler o texto falso inteiro: na força forte, cerca de um terço dele. O que fica garantido é a sua fala sumir.${m.longo?`<br><b>Texto falso longo demais:</b> ${m.falso} letras para ${m.fala} de fala. Corte frases inteiras, umas ${m.cortar} palavras, até ficar com no máximo ${m.limite} letras. Com ele assim, a IA lê metade do que leria e o painel não deixa proteger.`:''}</div>
   <table><thead><tr><th>Tempo</th><th>Fala</th><th>Texto falso</th><th>Proteger</th></tr></thead><tbody>
   ${tr.map((t,i)=>`<tr><td>${t.ini}–${t.fim}s</td><td>${esc(t.original)}</td><td><textarea oninput="rotEdit['${d.id}'][${i}].falso=this.value">${esc(t.falso)}</textarea></td><td><input type="checkbox" ${t.proteger?'checked':''} onchange="rotEdit['${d.id}'][${i}].proteger=this.checked"></td></tr>`).join('')}
   </tbody></table>
   <div class="linha" style="margin-top:12px"><button class="pri" onclick="protegerRoteiro('${d.id}')">Está certo, proteger agora</button><span class="dica">Só começa depois do seu clique.</span></div>`;
 }
+// texto falso maior que a fala: a IA lê metade (teste de 22/11/2026: 17% contra 32% da copy)
+const LIMITE_FALSO=1.2;
+function medirFalso(tr){
+  const nc=s=>(s||'').trim().split(/\s+/).filter(Boolean).join(' ').length;
+  const p=tr.filter(t=>t.proteger);
+  const fala=p.reduce((a,t)=>a+nc(t.original),0), falso=p.reduce((a,t)=>a+nc(t.falso),0), limite=Math.floor(fala*LIMITE_FALSO);
+  const cortar=Math.ceil((falso-limite)/6);  // ~6 letras por palavra, contando o espaço
+  const trechos=p.filter(t=>nc(t.falso)>Math.max(20,nc(t.original)*1.5)).map(t=>`${t.ini}–${t.fim}s`);
+  return {fala,falso,limite,cortar,longo:falso>limite,trechos};
+}
 async function protegerRoteiro(id){
-  const tr=rotEdit[id]; const vazios=tr.filter(t=>t.proteger&&!t.falso.trim()).length;
+  const tr=rotEdit[id]; const m=medirFalso(tr);
+  if(m.longo){alert(`O texto falso tem ${m.falso} letras e a fala tem ${m.fala}. Corte frases inteiras, umas ${m.cortar} palavras, até ficar com no máximo ${m.limite} letras.${m.trechos.length&&m.trechos.length<=tr.length/2?' Trechos mais longos: '+m.trechos.join(', ')+'.':''}`);return}
+  const vazios=tr.filter(t=>t.proteger&&!t.falso.trim()).length;
   if(vazios&&!confirm(vazios+' trecho(s) marcados para proteger estão sem texto falso. Continuar mesmo assim?'))return;
   const j=estado.trabalhos.find(x=>x.id===id)||{};
   const r=await api(`/api/jobs/${id}/proteger`,{trechos:tr});

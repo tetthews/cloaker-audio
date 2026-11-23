@@ -477,6 +477,15 @@ class H(BaseHTTPRequestHandler):
                 trechos = d.get("trechos") or []
                 if not trechos or not any(t.get("proteger", True) for t in trechos):
                     return self.json({"erro": "Marque pelo menos um trecho para proteger."}, 400)
+                # texto falso maior que a fala: a IA lê metade (teste de 22/11/2026: 17% contra 32% da copy)
+                prot = [t for t in trechos if t.get("proteger", True)]
+                letras = lambda x: len(" ".join((x or "").split()))
+                fala = sum(letras(t.get("original")) for t in prot)
+                falso = sum(letras(t.get("falso")) for t in prot)
+                limite = int(fala * 1.2)
+                if falso > limite:
+                    return self.json({"erro": f"O texto falso tem {falso} letras e a fala tem {fala}. Corte frases inteiras, "
+                                              f"umas {-(-(falso - limite) // 6)} palavras, até ficar com no máximo {limite} letras."}, 400)
                 base = json.loads((pj / "roteiro.json").read_text(encoding="utf-8"))
                 base["trechos"] = trechos
                 (pj / "roteiro_final.json").write_text(json.dumps(base, ensure_ascii=False, indent=2), encoding="utf-8")

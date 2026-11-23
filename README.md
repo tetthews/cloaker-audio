@@ -215,6 +215,17 @@ Expectativa realista: a IA não lê a copy inteira palavra por palavra. Nos test
 das palavras transcritas vêm do texto falso; o resto sai embaralhado. O que importa é que a
 fala original some (3% a 15% recuperável).
 
+Teste de 22/11/2026 (vídeo de 42 s, perfil rápido no Mac, depois de simular o upload):
+
+| Copy | Força | Copy na transcrição | Fala recuperável | Ruído |
+|---|---|---|---|---|
+| 1,8x o tamanho da fala | forte | 17% a 20% | 13% a 15% | leve, dá para perceber |
+| do tamanho da fala | forte | 32% a 39% | 8% a 9% | leve, dá para perceber |
+| do tamanho da fala | máxima | 70% a 73% | 5% a 8% | forte, vídeo quase inutilizável |
+
+Por isso o painel não deixa proteger com texto falso mais de 20% maior que a fala (em letras)
+e, no modo roteiro, já começa na força forte.
+
 Quanto mais o texto falso "soa" parecido com o verdadeiro (troca números, nomes, passos, oferta),
 mais fácil a IA cair. Onde a troca não pega, o treino ainda empurra a IA pra longe do original.
 
